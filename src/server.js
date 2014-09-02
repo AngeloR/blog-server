@@ -1,13 +1,16 @@
 var restify = require('restify'),
     _ = require('underscore'),
     fs = require('fs'),
+    buffer = require('buffer'),
     LogModule = require('./modules/log/module.js'),
     Log = new LogModule(),
     ConfigModule = require('./modules/config/module.js'),
-    Config = new ConfigModule();
+    Config = new ConfigModule(),
+    RendererModule = require('./modules/renderer/module.js'),
+    Renderer = new RendererModule();
 
 
-var server = restify.createServer();
+var apiServer = restify.createServer();
 
 function buildContentPath() {
     var pieces = '';
@@ -29,14 +32,19 @@ function getArticleList(year, month, callback) {
 }
 
 function getArticle(year, month, filename, callback) {
-    fs.readFile(buildContentPath(year, month) + '/' + filename, {
-        encoding: 'utf8'
-    }, function(err, data){
-        if(err) {
-            throw err;
-        }
-        callback(data);
-    });
+    if(fs.existsSync(buildContentPath(year, month) +'/' + filename)) {
+        fs.readFile(buildContentPath(year, month) + '/' + filename, {
+            encoding: 'utf8'
+        }, function(err, data){
+            if(err) {
+                throw err;
+            }
+            callback(data);
+        });
+    }
+    else {
+        callback({});
+    }
 }
 
 function standardizeYear(year) {
@@ -72,7 +80,9 @@ function getArticleListForYear(year, callback) {
     });
 };
 
-server.use(function(req, res, next){
+apiServer.use(restify.CORS());
+
+apiServer.use(function(req, res, next){
     if(Config.isEnv('dev')) {
         var colors = require('colors');
         console.log(req.route.method.bold + ' ' + req.url.green);
@@ -80,7 +90,7 @@ server.use(function(req, res, next){
     next();
 });
 
-server.get('/articles', function(req, res){
+apiServer.get('/articles', function(req, res){
     // this endpoint is the exact same as getting all articles for the current 
     // year
     var date = new Date(),
@@ -92,7 +102,7 @@ server.get('/articles', function(req, res){
 
 });
 
-server.get('/articles/:year', function(req, res){
+apiServer.get('/articles/:year', function(req, res){
     // get every folder in the year place
     var year = standardizeYear(req.params.year);
 
@@ -101,7 +111,7 @@ server.get('/articles/:year', function(req, res){
     });
 });
 
-server.get('/articles/:year/:month', function(req, res){
+apiServer.get('/articles/:year/:month', function(req, res){
     // get the article.json file for this
     var year = standardizeYear(req.params.year),
         month = standardizeMonth(req.params.month);
@@ -111,7 +121,7 @@ server.get('/articles/:year/:month', function(req, res){
     });
 });
 
-server.get('/articles/:year/:month/:articleID', function(req, res){
+apiServer.get('/articles/:year/:month/:articleID', function(req, res){
     var year = standardizeYear(req.params.year),
         month = standardizeMonth(req.params.month),
         articlePointer; 
@@ -120,8 +130,11 @@ server.get('/articles/:year/:month/:articleID', function(req, res){
         articlePointer = articleList[req.params.articleID];
         if(!_.isUndefined(articlePointer)) {
                 getArticle(year, month, articlePointer.file, function(data){
-                res.setHeader('content-type', 'text/plain');
-                res.send(data);
+
+                Renderer.transform('markdown', data, function(parsedData){
+                    res.setHeader('content-type', 'text/html');
+                    res.send(parsedData);
+                });
             });
         }
         else {
@@ -130,6 +143,6 @@ server.get('/articles/:year/:month/:articleID', function(req, res){
     });
 });
 
-server.listen(Config.get('server.port'), function(){
-    Log.debug('Waiting on [' + Config.get('server.port') + ']');
+apiServer.listen(Config.get('apiServer.port'), function(){
+    Log.debug('apiServer started on [' + Config.get('apiServer.port') + ']');
 });
