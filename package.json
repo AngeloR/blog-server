@@ -2,8 +2,10 @@
   "name": "xangelo-blog",
   "description": "static blog service",
   "dependencies": {
-    "restify": "^2.8.2",
-    "underscore": "^1.6.0"
+    "marked": "^0.3.2",
+    "pygmentize-bundled": "^2.1.1",
+    "underscore": "^1.6.0",
+    "restify": "^2.8.2"
   },
   "devDependencies": {
     "colors": "^0.6.2"
