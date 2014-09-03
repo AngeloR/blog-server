@@ -1,0 +1,6 @@
+[submodule "content"]
+	path = content
+	url = git://github.com/angelor/blog-content.git
+[submodule "public"]
+	path = public
+	url = git://github.com/angelor/blog-ui.git
