@@ -121,13 +121,18 @@ apiServer.get('/articles/:year/:month', function(req, res){
     });
 });
 
-apiServer.get('/articles/:year/:month/:articleID', function(req, res){
+apiServer.get('/articles/:year/:month/:articleSlug', function(req, res){
     var year = standardizeYear(req.params.year),
         month = standardizeMonth(req.params.month),
         articlePointer; 
 
     getArticleList(year, month, function(articleList){
-        articlePointer = articleList[req.params.articleID];
+        _.each(articleList, function(article){
+            if(article.slug === req.params.articleSlug) {
+                articlePointer = article;
+            }
+        });
+
         if(!_.isUndefined(articlePointer)) {
                 getArticle(year, month, articlePointer.file, function(data){
 
